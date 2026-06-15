@@ -1,0 +1,642 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK Founder Tax Calculator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{background:#f8fafc;font-family:'Inter',sans-serif;margin:0;padding:0;}
+input[type=number],input[type=text]{border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;width:100%;background:white;color:#0f172a;outline:none;transition:border-color .15s;}
+input:focus{border-color:#4f6ef7;box-shadow:0 0 0 3px rgba(79,110,247,.1);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:#e2e8f0;outline:none;border:none;padding:0;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#4f6ef7;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#4f6ef7;cursor:pointer;border:none;}
+.toggle{position:relative;display:inline-block;width:40px;height:22px;}
+.toggle input{opacity:0;width:0;height:0;}
+.tslider{position:absolute;cursor:pointer;inset:0;background:#cbd5e1;border-radius:22px;transition:.2s;}
+.tslider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;}
+input:checked+.tslider{background:#4f6ef7;}
+input:checked+.tslider:before{transform:translateX(18px);}
+.seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:white;overflow:hidden;white-space:nowrap;padding:0 6px;}
+.mrr-display{background:linear-gradient(135deg,#4f6ef7,#7c3aed);border-radius:16px;padding:20px 24px;color:white;}
+.rate-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;margin-bottom:6px;font-size:13px;}
+.rate-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;}
+</style>
+</head>
+<body>
+<div class="max-w-5xl mx-auto px-4 py-8">
+
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-slate-900">UK Founder Tax Calculator</h1>
+    <p class="text-slate-500 text-sm mt-1">True marginal rate optimiser — salary vs dividends at every income band — 2024/25</p>
+  </div>
+
+  <!-- Revenue -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
+    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-5">Subscription revenue</h2>
+    <div class="grid grid-cols-2 gap-6 mb-6">
+      <div>
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-sm font-medium text-slate-700">Subscribers</label>
+          <span class="text-sm font-bold text-indigo-600" id="subs-display">10,000</span>
+        </div>
+        <input type="range" id="subs_slider" min="0" max="100000" step="100" value="10000" oninput="syncSubs('slider')">
+        <div class="flex justify-between text-xs text-slate-400 mt-1"><span>0</span><span>100k</span></div>
+        <input type="number" id="subs_input" value="10000" min="0" step="100" class="mt-2" oninput="syncSubs('input')">
+      </div>
+      <div>
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-sm font-medium text-slate-700">Price per subscriber / month</label>
+          <span class="text-sm font-bold text-indigo-600" id="price-display">£5.00</span>
+        </div>
+        <input type="range" id="price_slider" min="0.5" max="100" step="0.5" value="5" oninput="syncPrice('slider')">
+        <div class="flex justify-between text-xs text-slate-400 mt-1"><span>£0.50</span><span>£100</span></div>
+        <input type="number" id="price_input" value="5" min="0.5" step="0.5" class="mt-2" oninput="syncPrice('input')">
+      </div>
+    </div>
+    <div class="mrr-display mb-6">
+      <div class="grid grid-cols-3 gap-6">
+        <div><p class="text-xs opacity-70 mb-1 uppercase tracking-wider">MRR</p><p class="text-2xl font-bold" id="mrr-val">—</p><p class="text-xs opacity-60 mt-1">monthly recurring revenue</p></div>
+        <div><p class="text-xs opacity-70 mb-1 uppercase tracking-wider">ARR (inc. VAT)</p><p class="text-2xl font-bold" id="arr-val">—</p><p class="text-xs opacity-60 mt-1">annual recurring revenue</p></div>
+        <div><p class="text-xs opacity-70 mb-1 uppercase tracking-wider">ARR (excl. VAT)</p><p class="text-2xl font-bold" id="arr-ex-val">—</p><p class="text-xs opacity-60 mt-1" id="vat-note-mrr">net of 20% VAT</p></div>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Business costs (inc. VAT)</label>
+        <input type="number" id="costs_total" value="30000" step="500" min="0">
+        <p class="text-xs text-slate-400 mt-1">All costs including any VAT paid</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Profit to retain in business</label>
+        <input type="number" id="retain" value="0" step="1000" min="0">
+        <p class="text-xs text-slate-400 mt-1">Kept in company after CT — not paid out</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Number of founders / directors</label>
+        <input type="number" id="num_founders" value="3" min="1" max="5" step="1">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Other personal income (each founder)</label>
+        <input type="number" id="other_income" value="0" step="500" min="0">
+        <p class="text-xs text-slate-400 mt-1">Rental, employment, interest etc.</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-6">
+      <label class="flex items-center gap-3 cursor-pointer">
+        <span class="toggle"><input type="checkbox" id="vat_reg" checked><span class="tslider"></span></span>
+        <span class="text-sm text-slate-700">VAT registered (standard 20%)</span>
+      </label>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <span class="toggle"><input type="checkbox" id="emp_allow"><span class="tslider"></span></span>
+        <span class="text-sm text-slate-700">Employment Allowance eligible (£5k off employer NI)</span>
+      </label>
+    </div>
+    <div id="retain-strip" class="hidden rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4">
+      <div class="grid grid-cols-3 gap-4">
+        <div><p class="text-xs text-slate-500 mb-1">Available after CT</p><p class="text-lg font-bold text-slate-800" id="rs-available">—</p></div>
+        <div><p class="text-xs text-slate-500 mb-1">Retained in business</p><p class="text-lg font-bold text-emerald-700" id="rs-retained">—</p></div>
+        <div><p class="text-xs text-slate-500 mb-1">Paid out as dividends</p><p class="text-lg font-bold text-indigo-700" id="rs-paid">—</p></div>
+      </div>
+      <div id="retain-warn" class="hidden mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"></div>
+    </div>
+  </div>
+
+  <!-- Marginal rate explainer -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
+    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Effective marginal rates — salary vs dividends</h2>
+    <p class="text-xs text-slate-400 mb-4">The true cost of each £1 of income, accounting for corporation tax saved on salary. When salary's net cost is lower than the dividend rate, salary wins for that band.</p>
+    <div id="rate-table"></div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-2 gap-4 mb-6">
+    <div class="bg-indigo-600 rounded-2xl p-5 text-white col-span-2 md:col-span-1">
+      <p class="text-sm opacity-80 mb-1">Optimal take-home (all founders)</p>
+      <p class="text-3xl font-bold" id="kpi-total">—</p>
+      <p class="text-sm opacity-70 mt-1" id="kpi-monthly">—</p>
+    </div>
+    <div class="grid grid-cols-2 gap-4 col-span-2 md:col-span-1">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <p class="text-xs font-medium text-slate-500 mb-1">Gross profit</p>
+        <p class="text-xl font-bold text-slate-900" id="kpi-gp">—</p>
+        <p class="text-xs text-slate-400 mt-1" id="kpi-rev">—</p>
+      </div>
+      <div class="bg-amber-50 rounded-2xl border border-amber-200 p-5">
+        <p class="text-xs font-medium text-amber-700 mb-1">Total tax burden</p>
+        <p class="text-xl font-bold text-amber-800" id="kpi-tax">—</p>
+        <p class="text-xs text-amber-600 mt-1" id="kpi-eff">—</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <p class="text-xs font-medium text-slate-500 mb-1">Corporation tax</p>
+        <p class="text-xl font-bold text-slate-900" id="kpi-ct">—</p>
+        <p class="text-xs text-slate-400 mt-1" id="kpi-ctrate">—</p>
+      </div>
+      <div class="bg-emerald-50 rounded-2xl border border-emerald-200 p-5">
+        <p class="text-xs font-medium text-emerald-700 mb-1">Retained in business</p>
+        <p class="text-xl font-bold text-emerald-800" id="kpi-retain">—</p>
+        <p class="text-xs text-emerald-600 mt-1" id="kpi-vat">—</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Optimal split breakdown -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
+    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Optimal salary &amp; dividend split</h2>
+    <p class="text-xs text-slate-400 mb-4">Salary is extended into each band only where the net cost is lower than dividends. The calculator stops at the crossover point.</p>
+    <div id="split-breakdown"></div>
+  </div>
+
+  <!-- PA taper warning -->
+  <div id="taper-banner" class="hidden mb-6 rounded-2xl border border-orange-200 bg-orange-50 p-5">
+    <div class="flex gap-3">
+      <div class="text-orange-500 text-xl mt-0.5">&#9888;</div>
+      <div>
+        <p class="text-sm font-semibold text-orange-800 mb-1">Personal Allowance taper active</p>
+        <p class="text-sm text-orange-700 leading-relaxed" id="taper-banner-text"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bar -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
+    <div class="flex justify-between items-center mb-3">
+      <span class="text-sm font-semibold text-slate-700">Revenue split (excl. VAT)</span>
+      <span class="text-sm font-medium text-slate-500" id="bar-total">—</span>
+    </div>
+    <div class="flex rounded-lg overflow-hidden h-8" id="main-bar"></div>
+    <div class="flex flex-wrap gap-x-5 gap-y-2 mt-3" id="bar-legend"></div>
+  </div>
+
+  <!-- Founder cards -->
+  <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Per founder — optimal breakdown</h2>
+  <div class="grid gap-4 mb-6" id="founder-cards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))"></div>
+
+  <!-- Waterfall -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
+    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Full cost waterfall</h2>
+    <div id="company-costs"></div>
+  </div>
+
+  <p class="text-xs text-slate-400 leading-relaxed" id="notice"></p>
+</div>
+
+<script>
+const G=n=>'\u00A3'+Math.round(n).toLocaleString('en-GB');
+const GD=n=>'\u00A3'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+const P=(n,d=1)=>(n*100).toFixed(d)+'%';
+const fmt2=n=>(n*100).toFixed(2)+'%';
+
+const AV=[
+  {bg:'#dbeafe',fg:'#1d4ed8',tx:'F1'},
+  {bg:'#dcfce7',fg:'#15803d',tx:'F2'},
+  {bg:'#fef3c7',fg:'#b45309',tx:'F3'},
+  {bg:'#fce7f3',fg:'#be185d',tx:'F4'},
+  {bg:'#ede9fe',fg:'#7c3aed',tx:'F5'},
+];
+
+// Tax constants
+const PA=12570, BASIC=50270, HIGHER=125140;
+const TAPER_START=100000, TAPER_END=125140;
+const ER_SEC=9100, ER_RATE=0.138;
+const EE_PRI=12570, EE_UP=50270, EE_R1=0.08, EE_R2=0.02;
+const DIV_ALLOW=500;
+// True effective dividend rates (after CT already paid on company profits)
+// These are the rates you actually pay on dividends received
+const DIV_B=0.0875, DIV_H=0.3375, DIV_A=0.3935;
+const IT_B=0.20, IT_H=0.40, IT_A=0.45;
+const CT_LOW=50000, CT_HI=250000, CT_SM=0.19, CT_MN=0.25;
+const MARGINAL_RELIEF_RATE=0.265; // effective marginal CT rate in £50k-£250k band
+
+function mCTRate(profit){
+  if(profit<=0)return 0;
+  if(profit<CT_LOW)return CT_SM;
+  if(profit>=CT_HI)return CT_MN;
+  return MARGINAL_RELIEF_RATE;
+}
+
+function corpTax(p){
+  if(p<=0)return 0;
+  if(p<=CT_LOW)return p*CT_SM;
+  if(p>=CT_HI)return p*CT_MN;
+  return p*CT_MN-(CT_HI-p)*((CT_MN-CT_SM)*CT_HI/(CT_HI-CT_LOW));
+}
+
+function effectivePA(totalInc){
+  if(totalInc<=TAPER_START)return PA;
+  if(totalInc>=TAPER_END)return 0;
+  return Math.max(0,PA-Math.floor((totalInc-TAPER_START)/2));
+}
+
+// Net cost of £1 salary in a given band (above PA so IT applies)
+// = IT rate + EE NI rate + ER NI rate (net of EA) - CT saving
+function salaryCostPerPound(itRate, eeNIRate, erNINet, ctRate){
+  return itRate + eeNIRate + erNINet - ctRate;
+}
+
+// For each income band, compare net salary cost vs dividend rate
+// Returns the bands with their verdicts
+function buildRateTable(taxableProfit, empAllow, eaRemaining){
+  const ctRate = mCTRate(taxableProfit);
+  // ER NI net of Employment Allowance — EA is £5000 total, so per £1 it depends on how much salary we're talking
+  // We'll show the per-£ rate assuming EA is already exhausted at £9,100 threshold for simplicity in the table
+  const erNIPerPound_noEA = ER_RATE;  // 13.8% on salary above £9,100
+  const erNIPerPound_withEA = 0;       // with EA covering it
+
+  const bands = [
+    {
+      label: 'Up to £9,100 (NI secondary threshold)',
+      itRate: 0, eeNI: 0, erNI: 0,
+      salCost: 0 - ctRate,
+      divRate: null, // salary below PA, no IT, no NI
+      note: 'Zero tax/NI on salary. Every £1 saves '+fmt2(ctRate)+' in CT. Always take salary here.',
+      verdict: 'salary',
+      color: 'bg-green-50 border-green-200',
+    },
+    {
+      label: '£9,101 – £12,570 (PA, above NI sec. threshold)',
+      itRate: 0, eeNI: 0, erNI: empAllow ? 0 : ER_RATE,
+      salCost: (empAllow ? 0 : ER_RATE) - ctRate,
+      divRate: null,
+      note: empAllow
+        ? 'No IT, no NI. EA covers employer NI. Net cost: −'+fmt2(ctRate)+' (pure CT saving). Always salary.'
+        : 'No IT, no EE NI. Employer NI costs '+fmt2(ER_RATE)+', CT saves '+fmt2(ctRate)+'. Net: '+fmt2(ER_RATE-ctRate)+'. '+(ER_RATE>ctRate?'Dividend slightly better here if available.':'Salary better.'),
+      verdict: empAllow ? 'salary' : (ER_RATE <= ctRate ? 'salary' : 'close'),
+      color: empAllow ? 'bg-green-50 border-green-200' : (ER_RATE <= ctRate ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'),
+    },
+    {
+      label: '£12,571 – £50,270 (basic rate band)',
+      itRate: IT_B, eeNI: EE_R1, erNI: empAllow ? 0 : ER_RATE,
+      salCost: IT_B + EE_R1 + (empAllow ? 0 : ER_RATE) - ctRate,
+      divRate: DIV_B,
+      note: '',
+      verdict: '',
+      color: '',
+    },
+    {
+      label: '£50,271 – £100,000 (higher rate, pre-taper)',
+      itRate: IT_H, eeNI: EE_R2, erNI: 0, // ER NI only up to UEL, above that it's 0
+      salCost: IT_H + EE_R2 - ctRate,
+      divRate: DIV_H,
+      note: '',
+      verdict: '',
+      color: '',
+    },
+    {
+      label: '£100,001 – £125,140 (PA taper zone — 60% effective IT)',
+      itRate: 0.60, eeNI: EE_R2, erNI: 0,
+      salCost: 0.60 + EE_R2 - ctRate,
+      divRate: DIV_H, // dividends here also suffer taper (effectively 33.75% + taper impact)
+      note: 'In the PA taper zone every £2 of income loses £1 of PA, creating an effective 60% income tax rate. Both salary and dividends are very expensive here. Best to retain profit rather than pay out.',
+      verdict: 'retain',
+      color: 'bg-red-50 border-red-200',
+    },
+    {
+      label: '£125,141+ (additional rate)',
+      itRate: IT_A, eeNI: EE_R2, erNI: 0,
+      salCost: IT_A + EE_R2 - ctRate,
+      divRate: DIV_A,
+      note: '',
+      verdict: '',
+      color: '',
+    },
+  ];
+
+  // Fill in auto-verdicts for the middle bands
+  bands.forEach(b => {
+    if(b.verdict !== '' || b.divRate === null) return;
+    const diff = b.salCost - b.divRate;
+    if(diff < -0.005){
+      b.verdict = 'salary';
+      b.color = 'bg-green-50 border-green-200';
+      b.note = `Salary net cost ${fmt2(b.salCost)} < dividend rate ${fmt2(b.divRate)}. Take salary. Saving ${fmt2(-diff)} per £1.`;
+    } else if(diff > 0.005){
+      b.verdict = 'dividend';
+      b.color = 'bg-blue-50 border-blue-200';
+      b.note = `Dividend rate ${fmt2(b.divRate)} < salary net cost ${fmt2(b.salCost)}. Take dividends. Saving ${fmt2(diff)} per £1.`;
+    } else {
+      b.verdict = 'toss-up';
+      b.color = 'bg-slate-50 border-slate-200';
+      b.note = `Salary net cost ${fmt2(b.salCost)} ≈ dividend rate ${fmt2(b.divRate)}. Effectively equal — within 0.5%.`;
+    }
+  });
+
+  return bands;
+}
+
+function incomeTax(sal, divs, other=0){
+  const totalInc = sal+divs+other;
+  const pa = effectivePA(totalInc);
+  const paLost = PA-pa;
+  const tapered = pa < PA;
+  const nonDiv = sal+other;
+  const taxableNonDiv = Math.max(0,nonDiv-pa);
+  let itS=0;
+  if(taxableNonDiv>0){
+    const bb=Math.max(0,BASIC-PA), hb=HIGHER-BASIC;
+    if(taxableNonDiv<=bb) itS=taxableNonDiv*IT_B;
+    else if(taxableNonDiv<=bb+hb) itS=bb*IT_B+(taxableNonDiv-bb)*IT_H;
+    else itS=bb*IT_B+hb*IT_H+(taxableNonDiv-bb-hb)*IT_A;
+  }
+  let itD=0;
+  const da=Math.max(0,divs-DIV_ALLOW);
+  if(da>0){
+    const br=Math.max(0,BASIC-nonDiv), hr=Math.max(0,HIGHER-Math.max(nonDiv,BASIC));
+    if(da<=br) itD=da*DIV_B;
+    else if(da<=br+hr) itD=br*DIV_B+(da-br)*DIV_H;
+    else itD=br*DIV_B+hr*DIV_H+(da-br-hr)*DIV_A;
+  }
+  return{itS,itD,total:itS+itD,pa,paLost,tapered,totalInc};
+}
+
+// Core optimiser: find the best salary per founder by sweeping
+function findOptimalSalary(n, gp, empAllow, otherInc, retainTarget){
+  let bestSal=0, bestTake=-Infinity;
+  const step=100;
+  for(let sal=0; sal<=Math.min(HIGHER, gp/n); sal+=step){
+    const t=simulate(sal,n,gp,empAllow,otherInc,retainTarget);
+    if(t.totTake>bestTake){ bestTake=t.totTake; bestSal=sal; }
+  }
+  // Fine search around best
+  for(let sal=Math.max(0,bestSal-step); sal<=Math.min(HIGHER,bestSal+step); sal+=10){
+    const t=simulate(sal,n,gp,empAllow,otherInc,retainTarget);
+    if(t.totTake>bestTake){ bestTake=t.totTake; bestSal=sal; }
+  }
+  return Math.round(bestSal);
+}
+
+function simulate(sal, n, gp, empAllow, otherInc, retainTarget){
+  const totSal=sal*n;
+  const erEachGross=Math.max(0,(sal-ER_SEC)*ER_RATE);
+  const ea=empAllow?Math.min(5000,erEachGross*n):0;
+  const totErNI=Math.max(0,erEachGross*n-ea);
+  const taxProfit=gp-totSal-totErNI;
+  const ct=corpTax(taxProfit);
+  const afterCT=Math.max(0,taxProfit-ct);
+  const actualRetain=Math.min(retainTarget,afterCT);
+  const divPool=Math.max(0,afterCT-actualRetain);
+  const divEach=divPool/n;
+  const founders=Array.from({length:n},()=>{
+    const eeNI = sal>=EE_PRI ? Math.max(0,Math.min(sal,EE_UP)-EE_PRI)*EE_R1+Math.max(0,sal-EE_UP)*EE_R2 : 0;
+    const it=incomeTax(sal,divEach,otherInc);
+    return{sal,divs:divEach,eeNI,itS:it.itS,itD:it.itD,take:sal+divEach-it.total-eeNI,erNI:totErNI/n,it};
+  });
+  const totTake=founders.reduce((a,b)=>a+b.take,0);
+  const totIt=founders.reduce((a,b)=>a+b.itS+b.itD,0);
+  const totEeNI=founders.reduce((a,b)=>a+b.eeNI,0);
+  return{sal,totSal,totErNI,ea,taxProfit,ct,afterCT,actualRetain,divPool,divEach,founders,totTake,totIt,totEeNI,anyTapered:founders.some(f=>f.it.tapered),effectivePAVal:founders[0]?.it.pa??PA,paLost:founders[0]?.it.paLost??0,totalIncEach:founders[0]?.it.totalInc??0};
+}
+
+function syncSubs(src){
+  const sl=document.getElementById('subs_slider'), ip=document.getElementById('subs_input');
+  if(src==='slider') ip.value=sl.value; else sl.value=Math.min(Math.max(parseFloat(ip.value)||0,0),100000);
+  document.getElementById('subs-display').textContent=parseInt(src==='slider'?sl.value:ip.value).toLocaleString('en-GB');
+  recalc();
+}
+function syncPrice(src){
+  const sl=document.getElementById('price_slider'), ip=document.getElementById('price_input');
+  if(src==='slider') ip.value=parseFloat(sl.value).toFixed(2); else sl.value=Math.min(Math.max(parseFloat(ip.value)||0,0.5),100);
+  document.getElementById('price-display').textContent='\u00A3'+parseFloat(src==='slider'?sl.value:ip.value).toFixed(2);
+  recalc();
+}
+
+function recalc(){
+  const subs=parseInt(document.getElementById('subs_input').value)||0;
+  const price=parseFloat(document.getElementById('price_input').value)||0;
+  const costsInc=parseFloat(document.getElementById('costs_total').value)||0;
+  const retainRaw=parseFloat(document.getElementById('retain').value)||0;
+  const n=Math.max(1,Math.min(5,parseInt(document.getElementById('num_founders').value)||3));
+  const vatReg=document.getElementById('vat_reg').checked;
+  const empAllow=document.getElementById('emp_allow').checked;
+  const otherInc=parseFloat(document.getElementById('other_income').value)||0;
+
+  const arrInc=subs*price*12;
+  const outputVAT=vatReg?arrInc/6:0;
+  const inputVAT=vatReg?costsInc/6:0;
+  const vatPay=vatReg?outputVAT-inputVAT:0;
+  const revEx=arrInc-outputVAT;
+  const costsEx=costsInc-inputVAT;
+  const gp=revEx-costsEx;
+
+  document.getElementById('mrr-val').textContent=G(subs*price);
+  document.getElementById('arr-val').textContent=G(arrInc);
+  document.getElementById('arr-ex-val').textContent=G(revEx);
+  document.getElementById('vat-note-mrr').textContent=vatReg?'net of 20% VAT':'VAT not registered';
+
+  // Find optimal salary
+  const optSal=findOptimalSalary(n,gp,empAllow,otherInc,retainRaw);
+  const active=simulate(optSal,n,gp,empAllow,otherInc,retainRaw);
+  const ctRate=mCTRate(active.taxProfit);
+  const ctRateLbl=active.taxProfit>CT_LOW&&active.taxProfit<CT_HI?'marginal (26.5%)':active.taxProfit<=CT_LOW?'19%':'25%';
+
+  // Also simulate £12,570 for comparison
+  const pa_sim=simulate(Math.min(PA,gp/n),n,gp,empAllow,otherInc,retainRaw);
+  const gain=active.totTake-pa_sim.totTake;
+
+  // Retain strip
+  if(retainRaw>0){
+    document.getElementById('retain-strip').classList.remove('hidden');
+    document.getElementById('rs-available').textContent=G(active.afterCT);
+    document.getElementById('rs-retained').textContent=G(active.actualRetain);
+    document.getElementById('rs-paid').textContent=G(active.divPool);
+    if(retainRaw>active.afterCT){
+      document.getElementById('retain-warn').classList.remove('hidden');
+      document.getElementById('retain-warn').textContent=`You want to retain ${G(retainRaw)} but only ${G(active.afterCT)} is available after CT. Retaining ${G(active.afterCT)} instead.`;
+    } else document.getElementById('retain-warn').classList.add('hidden');
+  } else document.getElementById('retain-strip').classList.add('hidden');
+
+  // Rate table
+  const bands=buildRateTable(active.taxProfit, empAllow, active.ea);
+  const verdictLabel={salary:'✓ Take as salary',dividend:'✓ Take as dividend','toss-up':'≈ Either works',retain:'⚠ Retain in company',close:'~ Close call'};
+  const verdictColor={salary:'text-green-700 bg-green-100',dividend:'text-blue-700 bg-blue-100','toss-up':'text-slate-600 bg-slate-100',retain:'text-red-700 bg-red-100',close:'text-yellow-700 bg-yellow-100'};
+  document.getElementById('rate-table').innerHTML=bands.map(b=>{
+    const salCostStr=b.divRate!==null?fmt2(b.salCost):'—';
+    const divRateStr=b.divRate!==null?fmt2(b.divRate):'—';
+    return`<div class="rate-row border ${b.color} mb-2">
+      <div class="flex-1">
+        <p class="font-medium text-slate-800 text-xs mb-1">${b.label}</p>
+        <p class="text-xs text-slate-500 leading-relaxed">${b.note}</p>
+      </div>
+      <div class="flex items-center gap-3 ml-4 flex-shrink-0">
+        ${b.divRate!==null?`<div class="text-center"><p class="text-xs text-slate-400">Salary net</p><p class="text-sm font-bold ${parseFloat(b.salCost)<parseFloat(b.divRate)?'text-green-600':'text-slate-700'}">${salCostStr}</p></div>
+        <div class="text-slate-300 text-lg">vs</div>
+        <div class="text-center"><p class="text-xs text-slate-400">Div rate</p><p class="text-sm font-bold ${parseFloat(b.divRate)<parseFloat(b.salCost)?'text-blue-600':'text-slate-700'}">${divRateStr}</p></div>`:''}
+        <span class="rate-badge ${verdictColor[b.verdict]||'text-slate-600 bg-slate-100'}">${verdictLabel[b.verdict]||''}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Split breakdown
+  const salAbovePA=Math.max(0,optSal-PA);
+  const salInBasic=Math.max(0,Math.min(optSal,BASIC)-PA);
+  const salInHigher=Math.max(0,optSal-BASIC);
+  document.getElementById('split-breakdown').innerHTML=`
+    <div class="grid grid-cols-2 gap-6 mb-4">
+      <div>
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Optimal salary structure</p>
+        <div class="space-y-2">
+          <div class="flex justify-between items-center py-2 px-3 rounded-lg bg-green-50 border border-green-200">
+            <span class="text-sm text-green-800">Up to £9,100 (zero NI)</span>
+            <span class="font-bold text-green-700">${G(Math.min(optSal,ER_SEC))}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 px-3 rounded-lg ${optSal>ER_SEC?'bg-green-50 border border-green-200':'bg-slate-50 border border-slate-200'}">
+            <span class="text-sm ${optSal>ER_SEC?'text-green-800':'text-slate-400'}">£9,101 – £12,570 (PA, NI kicks in)</span>
+            <span class="font-bold ${optSal>ER_SEC?'text-green-700':'text-slate-400'}">${G(Math.min(Math.max(0,optSal-ER_SEC),PA-ER_SEC))}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 px-3 rounded-lg ${salInBasic>0?'bg-green-50 border border-green-200':'bg-slate-50 border border-slate-200'}">
+            <span class="text-sm ${salInBasic>0?'text-green-800':'text-slate-400'}">£12,571 – £50,270 (basic rate)</span>
+            <span class="font-bold ${salInBasic>0?'text-green-700':'text-slate-400'}">${G(salInBasic)}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 px-3 rounded-lg ${salInHigher>0?'bg-amber-50 border border-amber-200':'bg-slate-50 border border-slate-200'}">
+            <span class="text-sm ${salInHigher>0?'text-amber-800':'text-slate-400'}">£50,271+ (higher rate — rarely optimal)</span>
+            <span class="font-bold ${salInHigher>0?'text-amber-700':'text-slate-400'}">${G(salInHigher)}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 px-3 rounded-lg bg-indigo-50 border border-indigo-200 mt-1">
+            <span class="text-sm font-semibold text-indigo-800">Total optimal salary / founder</span>
+            <span class="font-bold text-indigo-700">${G(optSal)}</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">vs Personal Allowance only (£12,570)</p>
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm py-1 border-b border-slate-100"><span class="text-slate-500">Take-home at £12,570 salary</span><span class="font-semibold text-slate-700">${G(pa_sim.totTake/n)}/yr</span></div>
+          <div class="flex justify-between text-sm py-1 border-b border-slate-100"><span class="text-slate-500">Take-home at optimal salary</span><span class="font-semibold text-indigo-700">${G(active.totTake/n)}/yr</span></div>
+          <div class="flex justify-between text-sm py-2 px-3 rounded-lg ${gain>0?'bg-green-50':'bg-slate-50'} mt-1">
+            <span class="font-semibold ${gain>0?'text-green-700':'text-slate-600'}">Gain per founder / year</span>
+            <span class="font-bold ${gain>0?'text-green-700':'text-slate-500'}">${gain>0?'+':''} ${G(gain/n)}</span>
+          </div>
+          ${gain>0?`<div class="flex justify-between text-sm py-2 px-3 rounded-lg bg-green-50">
+            <span class="font-semibold text-green-700">Gain per founder / month</span>
+            <span class="font-bold text-green-700">+${G(gain/n/12)}</span>
+          </div>`:''}
+          <div class="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>CT rate in your band: ${fmt2(ctRate)}</strong><br>
+              Basic rate salary net cost: ${fmt2(IT_B+EE_R1+(empAllow?0:ER_RATE)-ctRate)} ${IT_B+EE_R1+(empAllow?0:ER_RATE)-ctRate < DIV_B ? '&lt; '+fmt2(DIV_B)+' div rate → <strong>salary wins</strong>' : '&gt; '+fmt2(DIV_B)+' div rate → <strong>dividend wins</strong>'}<br>
+              Higher rate salary net cost: ${fmt2(IT_H+EE_R2-ctRate)} vs ${fmt2(DIV_H)} div rate → <strong>${IT_H+EE_R2-ctRate < DIV_H?'salary wins':'dividend wins'}</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // PA taper banner
+  if(active.anyTapered){
+    document.getElementById('taper-banner').classList.remove('hidden');
+    document.getElementById('taper-banner-text').innerHTML=`Total income per founder (${G(active.totalIncEach)}) exceeds £100,000. PA reduced from ${G(PA)} to <strong>${G(active.effectivePAVal)}</strong>, costing at least <strong>${G(active.paLost*IT_B)}</strong> extra. ${retainRaw===0?'Consider retaining more profit to reduce dividends below the taper threshold.':'Increasing retained profit could bring income below £100k.'}`;
+  } else document.getElementById('taper-banner').classList.add('hidden');
+
+  // KPIs
+  const totBurden=vatPay+active.totErNI+active.ct+active.totIt+active.totEeNI;
+  document.getElementById('kpi-total').textContent=G(active.totTake);
+  document.getElementById('kpi-monthly').textContent=G(active.totTake/n)+' / founder / month';
+  document.getElementById('kpi-gp').textContent=G(gp);
+  document.getElementById('kpi-rev').textContent='revenue excl. VAT: '+G(revEx);
+  document.getElementById('kpi-tax').textContent=G(totBurden);
+  document.getElementById('kpi-eff').textContent=P(gp>0?totBurden/gp:0)+' of gross profit';
+  document.getElementById('kpi-ct').textContent=G(active.ct);
+  document.getElementById('kpi-ctrate').textContent=ctRateLbl;
+  document.getElementById('kpi-retain').textContent=G(active.actualRetain);
+  document.getElementById('kpi-vat').textContent=vatReg?'VAT payable: '+G(vatPay):'VAT: not registered';
+
+  // Bar
+  const segs=[
+    {l:'Take-home',v:active.totTake,c:'#3a56e8'},
+    {l:'Retained',v:active.actualRetain,c:'#059669'},
+    {l:'Corp tax',v:active.ct,c:'#92400e'},
+    {l:'Income tax',v:active.totIt,c:'#991b1b'},
+    {l:'Employer NI',v:active.totErNI,c:'#166534'},
+    {l:'Employee NI',v:active.totEeNI,c:'#1e40af'},
+    {l:'VAT',v:vatPay,c:'#4b5563'},
+  ].filter(s=>s.v>0);
+  const st=segs.reduce((a,b)=>a+b.v,0);
+  document.getElementById('main-bar').innerHTML=segs.map(s=>`<div class="seg" style="width:${(s.v/st*100).toFixed(1)}%;background:${s.c}">${(s.v/st*100)>6?s.l:''}</div>`).join('');
+  document.getElementById('bar-total').textContent=G(revEx);
+  document.getElementById('bar-legend').innerHTML=segs.map(s=>`<span class="flex items-center gap-1.5 text-xs text-slate-600"><span style="width:10px;height:10px;border-radius:2px;background:${s.c};display:inline-block"></span>${s.l}: ${G(s.v)}</span>`).join('');
+
+  // Founder cards
+  document.getElementById('founder-cards').innerHTML=active.founders.map((f,i)=>{
+    const av=AV[i%AV.length];
+    const dp=f.gross>0?Math.round(f.divs/f.gross*100):0;
+    const sp=100-dp;
+    return`<div class="bg-white rounded-2xl border ${f.it.tapered?'border-orange-300':'border-slate-200'} shadow-sm overflow-hidden">
+      <div class="flex items-center gap-3 p-4 border-b ${f.it.tapered?'border-orange-200 bg-orange-50':'border-slate-100 bg-slate-50'}">
+        <div style="width:38px;height:38px;border-radius:50%;background:${av.bg};color:${av.fg};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${av.tx}</div>
+        <div class="flex-1"><p class="font-semibold text-slate-900 text-sm">Founder ${i+1}</p><p class="text-xs text-slate-500">Optimal: ${G(optSal)} salary</p></div>
+        ${f.it.tapered?'<span class="text-xs bg-orange-200 text-orange-800 font-semibold px-2 py-0.5 rounded-full">PA tapered</span>':''}
+      </div>
+      <div class="p-4 space-y-0.5">
+        <div class="flex justify-between text-sm py-1"><span class="text-slate-500">Salary (PAYE)</span><span class="font-semibold text-slate-800">${G(f.sal)}</span></div>
+        <div class="flex justify-between text-sm py-1"><span class="text-slate-500">Dividends</span><span class="font-semibold text-slate-800">${G(f.divs)}</span></div>
+        <div class="flex rounded overflow-hidden h-2 my-2">
+          <div style="width:${sp}%;background:#4f6ef7"></div>
+          <div style="width:${dp}%;background:#10b981"></div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-400 mb-2"><span>PAYE ${sp}%</span><span>Dividend ${dp}%</span></div>
+        <div class="h-px bg-slate-100 my-2"></div>
+        <div class="flex justify-between text-sm py-1"><span class="text-slate-500">Total income</span><span class="font-semibold ${f.it.tapered?'text-orange-600':'text-slate-700'}">${G(f.it.totalInc)}</span></div>
+        <div class="flex justify-between text-sm py-1"><span class="text-slate-500">Personal allowance</span><span class="font-semibold ${f.it.tapered?'text-orange-600':'text-slate-700'}">${G(f.it.pa)}</span></div>
+        ${f.it.tapered?`<div class="flex justify-between text-xs py-1 bg-orange-50 rounded px-2"><span class="text-orange-700">PA lost to taper</span><span class="font-semibold text-orange-700">${G(f.it.paLost)}</span></div>`:''}
+        <div class="h-px bg-slate-100 my-2"></div>
+        <div class="flex justify-between text-sm py-1"><span class="text-slate-500">Employer NI (co.)</span><span class="font-semibold text-red-500">-${G(f.erNI)}</span></div>
+        <div class="flex justify-between text-sm py-1"><span class="text-slate-500">Income tax</span><span class="font-semibold text-red-600">-${G(f.itS+f.itD)}</span></div>
+        <div class="flex justify-between text-sm py-1"><span class="text-slate-500">Employee NI</span><span class="font-semibold text-red-600">-${G(f.eeNI)}</span></div>
+        <div class="h-px bg-slate-100 my-2"></div>
+        <div class="flex justify-between text-sm py-2 bg-green-50 rounded-lg px-2"><span class="text-green-700 font-medium">Take-home / year</span><span class="font-bold text-green-700">${G(f.take)}</span></div>
+        <div class="flex justify-between text-sm py-2 bg-green-50 rounded-lg px-2 mt-1"><span class="text-green-700 font-medium">Take-home / month</span><span class="font-bold text-green-700">${G(f.take/12)}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Waterfall
+  const r=active;
+  const row=(l,v,cls='text-slate-900')=>`<div class="flex justify-between items-center py-2 border-b border-slate-100"><span class="text-sm text-slate-500">${l}</span><span class="text-sm font-semibold ${cls}">${v}</span></div>`;
+  const rowT=(l,v,cls='text-slate-900')=>`<div class="flex justify-between items-center py-2 px-3 rounded-lg bg-slate-50 my-1"><span class="text-sm font-semibold text-slate-700">${l}</span><span class="text-sm font-bold ${cls}">${v}</span></div>`;
+  const sec=t=>`<p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4 mb-1">${t}</p>`;
+  document.getElementById('company-costs').innerHTML=
+    sec('Subscription revenue')+
+    row(`${subs.toLocaleString('en-GB')} subscribers \u00D7 ${GD(price)}/mo \u00D7 12`,'= '+G(arrInc),'text-green-600')+
+    (vatReg?row('Output VAT (ARR \u00F7 6)','-'+G(outputVAT),'text-red-500'):'')+
+    (vatReg?row('Input VAT reclaimed (costs \u00F7 6)','+'+G(inputVAT),'text-green-600'):'')+
+    row('Business costs (excl. VAT)','-'+G(costsEx),'text-red-500')+
+    rowT('Gross profit',G(gp))+
+    sec('PAYE &amp; NI (optimal salary: '+G(optSal)+' / founder)')+
+    row(`Salaries (${n} \u00D7 ${G(r.sal)})`,'- '+G(r.totSal),'text-red-500')+
+    row('Employer NI (gross)','-'+G(Math.max(0,(r.sal-ER_SEC)*ER_RATE)*n),'text-red-500')+
+    (empAllow&&r.ea>0?row('Employment Allowance','+'+G(r.ea),'text-green-600'):'')+
+    rowT('Net employer NI','-'+G(r.totErNI),'text-red-700')+
+    rowT('Taxable profit',G(r.taxProfit))+
+    sec('Corporation Tax ('+ctRateLbl+')')+
+    row('Corporation tax','-'+G(r.ct),'text-red-500')+
+    rowT('After-tax profit',G(r.afterCT))+
+    (retainRaw>0?row('Retained in business','-'+G(r.actualRetain),'text-emerald-600'):'')+
+    rowT('Available for dividends',G(r.divPool),'text-indigo-700')+
+    row('Per founder dividend',G(r.divEach))+
+    sec('Personal tax per founder')+
+    row('Total income',G(r.totalIncEach),r.anyTapered?'text-orange-600':'text-slate-900')+
+    row('Personal Allowance',G(r.effectivePAVal),r.anyTapered?'text-orange-600':'text-slate-900')+
+    (r.anyTapered?row('PA lost to taper',G(r.paLost),'text-orange-600'):'')+
+    row('Income tax on salary','-'+G(r.founders[0]?.itS||0),'text-red-500')+
+    row('Income tax on dividends','-'+G(r.founders[0]?.itD||0),'text-red-500')+
+    row('Employee NI','-'+G(r.founders[0]?.eeNI||0),'text-red-500')+
+    rowT('Take-home per founder / year',G(r.founders[0]?.take||0),'text-green-700')+
+    rowT('Take-home per founder / month',G((r.founders[0]?.take||0)/12),'text-green-700');
+
+  document.getElementById('notice').textContent='2024/25 rates. Effective dividend tax rates used (as received): basic 8.75%, higher 33.75%, additional 39.35%. Salary net cost = IT rate + EE NI − CT saving rate. Optimal salary found by sweeping £0–£125,140 in £10 steps. PA taper: £1 lost per £2 above £100k, fully gone at £125,140. CT marginal relief band effective rate 26.5%. Employment Allowance not available to single-director companies. Illustrative only — consult a qualified accountant.';
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  recalc();
+  ['costs_total','retain','num_founders','other_income'].forEach(id=>document.getElementById(id).addEventListener('input',recalc));
+  document.getElementById('vat_reg').addEventListener('change',recalc);
+  document.getElementById('emp_allow').addEventListener('change',recalc);
+});
+</script>
+</body>
+</html>
