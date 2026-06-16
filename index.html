@@ -34,7 +34,7 @@ input:checked+.tslider:before{transform:translateX(18px);}
 
   <div class="mb-8">
     <h1 class="text-2xl font-bold text-slate-900">VM Revenue Calculator</h1>
-    <p class="text-slate-500 text-sm mt-1">True marginal rate optimiser — salary vs dividends at every income band — 2024/25</p>
+    <p class="text-slate-500 text-sm mt-1">True marginal rate optimiser — salary vs dividends at every income band — 2026/27</p>
   </div>
 
   <!-- Revenue -->
@@ -209,7 +209,7 @@ const EE_PRI=12570, EE_UP=50270, EE_R1=0.08, EE_R2=0.02;
 const DIV_ALLOW=500;
 // True effective dividend rates (after CT already paid on company profits)
 // These are the rates you actually pay on dividends received
-const DIV_B=0.0875, DIV_H=0.3375, DIV_A=0.3935;
+const DIV_B=0.1075, DIV_H=0.3575, DIV_A=0.3935;
 const IT_B=0.20, IT_H=0.40, IT_A=0.45;
 const CT_LOW=50000, CT_HI=250000, CT_SM=0.19, CT_MN=0.25;
 const MARGINAL_RELIEF_RATE=0.265; // effective marginal CT rate in £50k-£250k band
@@ -633,7 +633,7 @@ function recalc(){
     rowT('Take-home per founder / year',G(r.founders[0]?.take||0),'text-green-700')+
     rowT('Take-home per founder / month',G((r.founders[0]?.take||0)/12),'text-green-700');
 
-  document.getElementById('notice').textContent='2024/25 rates. Effective dividend tax rates used (as received): basic 8.75%, higher 33.75%, additional 39.35%. Salary net cost = IT rate + EE NI − CT saving rate. Optimal salary found by sweeping £0–£125,140 in £10 steps. PA taper: £1 lost per £2 above £100k, fully gone at £125,140. CT marginal relief band effective rate 26.5%. Employment Allowance not available to single-director companies. Illustrative only — consult a qualified accountant.';
+  document.getElementById('notice').textContent='2026/27 rates. Effective dividend tax rates used (as received): basic 10.75%, higher 35.75%, additional 39.35%. Salary net cost = IT rate + EE NI − CT saving rate. Optimal salary found by sweeping £0–£125,140 in £10 steps. PA taper: £1 lost per £2 above £100k, fully gone at £125,140. CT marginal relief band effective rate 26.5%. Employment Allowance not available to single-director companies. Illustrative only — consult a qualified accountant.';
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
