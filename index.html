@@ -292,10 +292,10 @@ function buildRateTable(taxableProfit, empAllow, eaRemaining){
       label: '£100,001 – £125,140 (PA taper zone — 60% effective IT)',
       itRate: 0.60, eeNI: EE_R2, erNI: 0,
       salCost: 0.60 + EE_R2 - ctRate,
-      divRate: DIV_H, // dividends here also suffer taper (effectively 33.75% + taper impact)
-      note: 'In the PA taper zone every £2 of income loses £1 of PA, creating an effective 60% income tax rate. Both salary and dividends are very expensive here. Best to retain profit rather than pay out.',
-      verdict: 'retain',
-      color: 'bg-red-50 border-red-200',
+      divRate: DIV_H,
+      note: '',
+      verdict: '',
+      color: '',
     },
     {
       label: '£125,141+ (additional rate)',
@@ -326,6 +326,10 @@ function buildRateTable(taxableProfit, empAllow, eaRemaining){
       b.note = `Salary net cost ${fmt2(b.salCost)} ≈ dividend rate ${fmt2(b.divRate)}. Effectively equal — within 0.5%.`;
     }
   });
+
+  // Append taper-zone context — both options are expensive; note the 60% effective rate
+  const taperBand = bands[4];
+  if(taperBand) taperBand.note += ' Caution: salary carries a 60% effective IT rate in this zone. Use the "Profit to retain" field above to keep personal income below £100k where possible.';
 
   return bands;
 }
